@@ -29,7 +29,8 @@ Make sure you have the following installed:
 - **Django 4.x**
 - **psycopg2** (if using PostgreSQL)
 
-### 1. Clone the Repository
+### 1. Set Up a Virtual Environment
 ```bash
-git clone https://github.com/your-username/tic-tac-toe-django.git
-cd tic-tac-toe-django
+python -m venv venv
+source venv/bin/activate  # For macOS/Linux
+venv\Scripts\activate     # For Windows
