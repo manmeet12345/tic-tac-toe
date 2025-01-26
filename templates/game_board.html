@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Game Board - Tic-Tac-Toe{% endblock %}
+{% block content %}
+<div class="max-w-2xl mx-auto p-6">
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold">Game #{{ game.id }}</h2>
+            <div class="text-gray-600">
+                {% if game.status == 'in_progress' %}
+                    {% if game.current_turn == request.user %}
+                        <span class="bg-green-100 text-green-800 px-3 py-1 rounded-full">Your Turn</span>
+                    {% else %}
+                        <span class="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full">
+                            Waiting for {{ game.current_turn.username }}
+                        </span>
+                    {% endif %}
+                {% endif %}
+            </div>
+        </div>
+
+        <div id="game-grid" class="grid grid-cols-3 gap-2 mb-6">
+            {% for cell in board %}
+                <div 
+                    data-position="{{ forloop.counter0 }}" 
+                    class="grid-cell w-full h-24 flex items-center justify-center text-5xl font-bold 
+                           bg-gray-100 border-2 border-gray-200 rounded-lg
+                           {% if cell != ' ' %}cursor-not-allowed{% elif game.current_turn == request.user %}cursor-pointer{% else %}cursor-not-allowed{% endif %}">
+                    {% if cell == 'X' %}
+                        <span class="text-red-500">X</span>
+                    {% elif cell == 'O' %}
+                        <span class="text-blue-500">O</span>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+
+        <div id="winner-message" class="mt-6 text-center text-xl font-bold text-green-600">
+            {% if game.status == 'finished' %}
+                {% if game.winner %}
+                    {{ game.winner.username }} wins!
+                {% else %}
+                    It's a draw!
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="flex justify-between items-center">
+            <div>
+                <span class="font-bold text-red-500">Player 1 (X):</span> {{ game.player1.username }}
+            </div>
+            <div>
+                <span class="font-bold text-blue-500">Player 2 (O):</span> {{ game.player2.username }}
+            </div>
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="{% url 'game_list' %}" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-200">
+                Back to Games List
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const csrfToken = "{{ csrf_token }}";
+
+document.querySelectorAll('.grid-cell').forEach(cell => {
+    cell.addEventListener('click', () => {
+        const position = cell.getAttribute('data-position');
+
+        // Prevent clicking on already occupied cells
+        if (cell.textContent.trim() || cell.classList.contains('cursor-not-allowed')) return;
+
+        fetch("{% url 'game_move' game.id %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify({ position })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update the cell with the player's symbol
+                const symbolClass = data.symbol === "X" ? "text-red-500" : "text-blue-500";
+                cell.innerHTML = `<span class="${symbolClass}">${data.symbol}</span>`;
+                cell.classList.add("cursor-not-allowed");
+
+            if (data.game_over) {
+                const winnerMessage = data.winner ? `${data.winner} wins!` : "It's a draw!";
+                document.getElementById('winner-message').textContent = winnerMessage;
+
+                // Optionally, you can disable further clicks after game over
+                document.getElementById('game-grid').classList.add('pointer-events-none');
+
+                setTimeout(() => location.reload(), 1500);  // Reload after a short delay
+            }
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            console.error("Error making the move:", error);
+        });
+    });
+});
+</script>
+{% endblock %}
